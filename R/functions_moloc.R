@@ -1,3 +1,38 @@
+#' Internal function, fast_get_combos
+#'
+#' Find all possible combinations for the traits faster than get_combos
+#' 
+#' @title fast_get_combos
+#' @param x names of each data frame
+#' @return character vector with all combinations of names
+#' @author Jeffrey Pullin
+#' @keywords internal
+fast_get_combos <- function(x) {
+  
+  d <- letters[1:length(x)]
+  n <- length(x) + 1
+  x <- partitions::setparts(n)
+  x <- lapply(seq_len(ncol(x)), function(i) x[,i])
+  
+  x <- lapply(x, function(x) {
+    out <- list()
+    for (i in seq_len(n)) {
+      out[[i]] <- which(x == i)
+      if (n %in% out[[i]]) {
+        out[[i]] <- integer(0)
+      }
+    }
+    out
+  })
+  
+  x <- lapply(x, function(x) {
+    x <- Filter(function(x) length(x) != 0, x)
+    x <- lapply(x, function(x) d[x])
+    paste0(lapply(x, function(x) paste0(x, collapse = "")), collapse = ",")
+  })
+  
+  as.character(x[2:length(x)])
+}
 #library(mvtnorm)
 
 ##' Estimate trait standard deviation given vectors of variance of coefficients,  MAF and sample size
@@ -284,8 +319,8 @@ config_coloc <- function(ABF, n_files, priors){
     d <- letters[1:n_files]
     configs_cases <- do.call(expand.grid, lapply(d, function(x) c("", x)))[-1,]
     configs <- do.call(paste0, configs_cases)
-    final_configs <- get_combos(d) # includes the non-coloc configs
-
+    final_configs <- fast_get_combos(d) # includes the non-coloc configs
+  
     # store sum of bfs for each configurarion, prior, and prior*sum(bfs_config)
     config_lkl <- array(,dim=c(length(final_configs),4,1), dimnames=list(final_configs,NULL,NULL))
     nsnps <- nrow(ABF)
@@ -365,7 +400,7 @@ snp_ppa <- function(ABF, n_files, config_ppas, save.SNP.info){
     d <- letters[1:n_files]
     configs_cases <- do.call(expand.grid, lapply(d, function(x) c("", x)))[-1,]
     configs <- do.call(paste0, configs_cases)
-    final_configs <- get_combos(d) # includes the non-coloc configs
+    final_configs <- fast_get_combos(d) # includes the non-coloc configs
     SNP.PP.H4.df <- as.data.frame(sapply(as.data.frame(ABF), function(x) exp(x-logsum(x)) ))
     names(SNP.PP.H4.df) = dimnames(ABF)[[3]]
     rownames(SNP.PP.H4.df) = dimnames(ABF)[[1]]
